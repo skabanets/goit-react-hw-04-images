@@ -1,0 +1,15 @@
+.NotificationWrapper {
+  height: 80vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.Notification {
+  font-size: 32px;
+  font-weight: 500;
+  color: rgb(213, 85, 85);
+  text-align: center;
+  max-width: 500px;
+}
