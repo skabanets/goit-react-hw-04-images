@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Searchbar,
   ImageGallery,
@@ -12,36 +12,36 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import s from './App.module.css';
 
-export class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    isLoading: false,
-    isLoadMore: false,
-    isEmpty: false,
-    isError: false,
-    modalContent: null,
-  };
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadMore, setIsLoadMore] = useState(false);
+  const [isEmpty, setIsEmpty] = useState(false);
+  const [isError, setIsError] = useState(false);
+  const [modalContent, setModalContent] = useState(null);
 
-  async componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
+  useEffect(() => {
+    if (!query) return;
 
-    if (prevState.query !== query || prevState.page !== page) {
+    (async () => {
       try {
-        this.setState({ isLoading: true });
+        setIsLoading(true);
         const res = await getImages(query, page);
         const { hits: images, totalHits: totalImages } = res;
         const totalPages = Math.ceil(totalImages / 60);
 
         if (!images.length) {
-          this.setState({ isEmpty: true });
+          setIsEmpty(true);
           toast.error(`No images found.`, { autoClose: 2000 });
           return;
         }
 
         if (page === 1) {
-          toast.success(`We found ${totalImages} images`, { autoClose: 2000 });
+          toast.success(`We found ${totalImages} images`, {
+            autoClose: 2000,
+          });
         }
 
         if (page !== 1 && page === totalPages) {
@@ -51,77 +51,67 @@ export class App extends Component {
           );
         }
 
-        this.setState(prevState => ({
-          images: [...prevState.images, ...images],
-          isLoadMore: page < totalPages,
-        }));
+        setImages(prev => [...prev, ...images]);
+        setIsLoadMore(page < totalPages);
       } catch (error) {
-        this.setState({ isError: true });
+        setIsError(true);
         toast.error(`${error.message}`, { autoClose: 2000 });
       } finally {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       }
-    }
-  }
+    })();
+  }, [query, page]);
 
-  handleSubmit = query => {
-    if (query) {
-      this.setState({
-        query,
-        images: [],
-        page: 1,
-        modalContent: null,
-        isLoadMore: false,
-        isEmpty: false,
-        isError: false,
+  const handleSubmit = newQuery => {
+    if (newQuery.toLowerCase() === query.toLowerCase()) {
+      return toast.warning(`The request matches the previous one.`, {
+        autoClose: 2000,
       });
     }
+
+    if (newQuery) {
+      setQuery(newQuery);
+      setImages([]);
+      setPage(1);
+      setModalContent(null);
+      setIsLoadMore(false);
+      setIsEmpty(false);
+      setIsError(false);
+    }
   };
 
-  handleClickImage = (url = '') => {
-    this.setState({ modalContent: url });
+  const handleClickImage = (url = '') => {
+    setModalContent(url);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const handleLoadMore = () => {
+    setPage(prev => prev + 1);
   };
 
-  render() {
-    const {
-      query,
-      images,
-      isLoading,
-      isLoadMore,
-      isEmpty,
-      isError,
-      modalContent,
-    } = this.state;
-
-    return (
-      <div className={s.App}>
-        <Searchbar onSubmit={this.handleSubmit} />
-        {isEmpty && (
-          <Notification
-            text="No images found for your request.
+  return (
+    <div className={s.App}>
+      <Searchbar onSubmit={handleSubmit} />
+      {isEmpty && (
+        <Notification
+          text="No images found for your request.
             Try to enter another query."
-          />
-        )}
-        {isError && (
-          <Notification
-            text="Oops, something's wrong!
+        />
+      )}
+      {isError && (
+        <Notification
+          text="Oops, something's wrong!
               Reload page or try again later."
-          />
-        )}
-        {!isEmpty && query && (
-          <ImageGallery images={images} openModal={this.handleClickImage} />
-        )}
-        {isLoadMore && <Button onClick={this.handleLoadMore} />}
-        {isLoading && <Loader />}
-        {modalContent && (
-          <Modal imageLink={modalContent} closeModal={this.handleClickImage} />
-        )}
-        <ToastContainer />
-      </div>
-    );
-  }
-}
+        />
+      )}
+      {!isEmpty && query && (
+        <ImageGallery images={images} openModal={handleClickImage} />
+      )}
+      {isLoadMore && <Button onClick={handleLoadMore} />}
+      {isLoading && <Loader />}
+      {modalContent && (
+        <Modal url={modalContent} closeModal={handleClickImage} />
+      )}
+      <ToastContainer />
+    </div>
+  );
+};
